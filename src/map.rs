@@ -534,6 +534,44 @@ where
         }
     }
 
+    /// An iterator visiting all key-value pairs in arbitrary order
+    /// starting from a given key.  If the key is not present then
+    /// returns None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// let mut cur: Option<&&str> = None;
+    /// loop {
+    ///     if let Some((key, val)) = map.next_after(cur) {
+    ///         println!("key: {} val: {}", key, val);
+    ///         cur = Some(key);
+    ///     } else {
+    ///         break;
+    ///     }
+    /// }
+    /// ```
+    #[inline]
+    pub fn next_after(&self, key: Option<&K>) -> Option<(&K, &V)>
+    {
+        if let Some(key) = key {
+            let hash = make_hash(&self.hash_builder, &key);
+            self.table
+                .next_by_key(hash, |q| q.0.eq(&key))
+                .map(|bucket| (&bucket.0, &bucket.1))
+       } else {
+           // None
+           self.iter().next()
+       }
+    }
+
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// The iterator element type is `(&'a K, &'a mut V)`.

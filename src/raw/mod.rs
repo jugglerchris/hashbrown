@@ -769,6 +769,35 @@ impl<T> RawTable<T> {
         unreachable!();
     }
 
+    /// Find the next item in a table.  The order is unspecified but is
+    /// stable if the table is not mutated.
+    pub fn next_by_key(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<&T> {
+        unsafe {
+            for pos in self.probe_seq(hash) {
+                let group = Group::load(self.ctrl(pos));
+                for bit in group.match_byte(h2(hash)) {
+                    let index = (pos + bit) & self.bucket_mask;
+                    let bucket = self.bucket(index);
+                    if likely(eq(bucket.as_ref())) {
+                        // We've found the key we wanted - now we need to find the
+                        // next one.
+
+                        let mut iter = RawIterRange::new_unaligned(self.ctrl.as_ptr(), self.data.as_ptr(), index+1..self.buckets());
+                        return iter.next()
+                                   .map(|bucket| bucket.as_ref())
+                    }
+                }
+                if likely(group.match_empty().any_bit_set()) {
+                    return None;
+                }
+            }
+        }
+
+        // probe_seq never returns.
+        unreachable!();
+    }
+
+
     /// Returns the number of elements the map can hold without reallocating.
     ///
     /// This number is a lower bound; the table might be able to hold
@@ -959,6 +988,37 @@ impl<T> RawIterRange<T> {
         let end = input_ctrl.add(range.end);
         debug_assert_eq!(offset_from(end, ctrl), range.end - range.start);
         let current_group = Group::load_aligned(ctrl).match_empty_or_deleted().invert();
+        RawIterRange {
+            data,
+            ctrl,
+            current_group,
+            end,
+        }
+    }
+
+    /// Returns a `RawIterRange` covering a subset of a table.
+    #[inline]
+    unsafe fn new_unaligned(
+        input_ctrl: *const u8,
+        input_data: *const T,
+        range: Range<usize>,
+    ) -> RawIterRange<T> {
+        // Move start back to the start of the group
+        let start = range.start & !(Group::WIDTH-1);
+
+        let ctrl = input_ctrl.add(start);
+        let data = input_data.add(start);
+        let end = input_ctrl.add(range.end);
+        debug_assert_eq!(offset_from(end, ctrl), range.end - start);
+        let mut current_group = Group::load_aligned(ctrl).match_empty_or_deleted().invert();
+        while let Some(index) = current_group.lowest_set_bit() {
+            if index <= range.start {
+                current_group = current_group.remove_lowest_bit();
+            } else {
+                break;
+            }
+        }
+
         RawIterRange {
             data,
             ctrl,
