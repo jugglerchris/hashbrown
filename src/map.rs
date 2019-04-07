@@ -3531,4 +3531,32 @@ mod test_map {
         }
     }
 
+    #[test]
+    fn test_next_after() {
+        let ss = ["one", "two", "three", "four", "five",
+                  "six", "seven", "eight", "nine", "ten"];
+
+        let map: HashMap<&str, usize> =
+                  ss.iter()
+                    .enumerate()
+                    .map(|(i, s)| (*s, i))
+                    .collect();
+
+        eprintln!("Map: {:?}", map);
+        let mut seen = Vec::new();
+        let mut cur = None;
+        loop {
+            if let Some((k, v)) = dbg!(map.next_after(cur)) {
+                seen.push(*v);
+                cur = Some(k);
+            } else {
+                break;
+            }
+        }
+        dbg!(&seen);
+        assert_eq!(seen.len(), ss.len());
+        let mut sorted = seen.clone();
+        sorted.sort();
+        assert_eq!(&seen[..], &((0..ss.len()).collect::<Vec<_>>())[..]);
+    }
 }
