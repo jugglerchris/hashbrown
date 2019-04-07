@@ -3557,6 +3557,6 @@ mod test_map {
         assert_eq!(seen.len(), ss.len());
         let mut sorted = seen.clone();
         sorted.sort();
-        assert_eq!(&seen[..], &((0..ss.len()).collect::<Vec<_>>())[..]);
+        assert_eq!(&sorted[..], &((0..ss.len()).collect::<Vec<_>>())[..]);
     }
 }

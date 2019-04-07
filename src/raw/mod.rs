@@ -1012,7 +1012,7 @@ impl<T> RawIterRange<T> {
         debug_assert_eq!(offset_from(end, ctrl), range.end - start);
         let mut current_group = Group::load_aligned(ctrl).match_empty_or_deleted().invert();
         while let Some(index) = current_group.lowest_set_bit() {
-            if index <= range.start {
+            if index < range.start {
                 current_group = current_group.remove_lowest_bit();
             } else {
                 break;
