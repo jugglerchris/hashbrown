@@ -3559,4 +3559,62 @@ mod test_map {
         sorted.sort();
         assert_eq!(&sorted[..], &((0..ss.len()).collect::<Vec<_>>())[..]);
     }
+
+    #[test]
+    fn test_next_after_remove() {
+        use std::string::String;
+        let ss = ["one", "two", "three", "four", "five",
+                  "six", "seven", "eight", "nine", "ten"];
+
+        let mut map: HashMap<String, usize> =
+                  ss.iter()
+                    .enumerate()
+                    .map(|(i, s)| ((*s).into(), i))
+                    .collect();
+
+        eprintln!("Map: {:?}", map);
+        let mut seen = Vec::new();
+        let mut cur = None;
+        loop {
+            if let Some((k, v)) = dbg!(map.next_after(cur.as_ref())) {
+                seen.push((k.clone(), v.clone()));
+                cur = Some(k.clone());
+            } else {
+                break;
+            }
+        }
+        dbg!(&seen);
+        assert_eq!(seen.len(), ss.len());
+        {
+            let mut sorted = seen.iter().map(|&(_,v)| v).collect::<Vec<_>>();
+            sorted.sort();
+            assert_eq!(&sorted[..], &((0..ss.len()).collect::<Vec<_>>())[..]);
+        }
+
+        // Now remove some items and iterate again
+        map.remove(&seen[0].0);
+        map.remove(&seen[2].0);
+        map.remove(&seen[4].0);
+        map.remove(&seen[6].0);
+        map.remove(&seen[8].0);
+
+        let mut seen_postdelete = Vec::new();
+        let mut cur = None;
+        loop {
+            if let Some((k, v)) = dbg!(map.next_after(cur)) {
+                seen_postdelete.push(*v);
+                cur = Some(k);
+            } else {
+                break;
+            }
+        }
+        dbg!(&seen);
+        dbg!(&seen_postdelete);
+        assert_eq!(seen_postdelete.len(), 5);
+        assert_eq!(seen_postdelete[0], seen[1].1);
+        assert_eq!(seen_postdelete[1], seen[3].1);
+        assert_eq!(seen_postdelete[2], seen[5].1);
+        assert_eq!(seen_postdelete[3], seen[7].1);
+        assert_eq!(seen_postdelete[4], seen[9].1);
+    }
 }
